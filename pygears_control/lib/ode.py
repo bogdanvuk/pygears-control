@@ -6,16 +6,22 @@ from .continuous import continuous
 
 def cont_wrap(f, qin, qout, init):
     def wrap(t, y):
-        res = f(t, y, wrap.x)
+        dy = f(t, y, wrap.x)
+
+        if isinstance(dy, tuple):
+            outp = dy[0]
+            dy = dy[1]
+        else:
+            outp = y
 
         if t < wrap.t:
-            return res
+            return dy
 
         if wrap.done_out:
             raise GearDone
 
         if qout.empty():
-            qout.put(y)
+            qout.put(outp)
 
         wrap.x = wrap.next_x
         wrap.next_x, wrap.t = qin.get()
@@ -23,7 +29,7 @@ def cont_wrap(f, qin, qout, init):
         if wrap.t is None:
             raise GearDone
 
-        return res
+        return dy
 
     wrap.x = init
     wrap.next_x = init

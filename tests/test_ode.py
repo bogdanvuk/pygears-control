@@ -5,13 +5,17 @@ from pygears.sim import sim
 from functools import partial
 
 
-def rc(t, y, x, R, C):
-    i = (x - y) / R
-    return i / C
+def rc(t, Vo, Vi, R, C):
+    i = (Vi - Vo) / R
+    dVo = i / C
+
+    return Vo, dVo
 
 
-drv(t=Float, seq=[10.0]*1000 + [0]*1000 + [10.0]*1000 + [0]*1000) \
+seq = [10.0] * 1000 + [0] * 1000
+
+drv(t=Float, seq=seq) \
     | ode(f=partial(rc, R=100, C=1e-6), init_y=[0], init_x=0) \
     | scope
 
-sim(timeout=4000)
+sim(timeout=len(seq))

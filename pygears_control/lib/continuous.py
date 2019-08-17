@@ -5,35 +5,6 @@ from pygears.typing import Float
 from pygears.sim import clk, timestep
 
 
-def cont_wrap(f, qin, qout, init):
-    def wrap(t, y):
-        res = f(t, y, wrap.x)
-
-        if t < wrap.t:
-            return res
-
-        if wrap.done_out:
-            raise GearDone
-
-        if qout.empty():
-            qout.put(y)
-
-        wrap.x = wrap.next_x
-        wrap.next_x, wrap.t = qin.get()
-
-        if wrap.t is None:
-            raise GearDone
-
-        return res
-
-    wrap.x = init
-    wrap.next_x = init
-    wrap.t = 0
-    wrap.done_out = False
-
-    return wrap
-
-
 @gear
 async def actuator(x: Float, *, qin, clk_freq, init):
 
