@@ -1,4 +1,4 @@
-from pygears import gear
+from pygears import gear, alternative
 from scipy import signal
 from pygears.typing import Float
 import numpy as np
@@ -19,6 +19,18 @@ def lti(x: Float, *, num, den, init_x, init_y=None, clk_freq=None) -> Float:
     def lti_ode(t, y, x):
         res = ss.A @ np.vstack(y) + ss.B * x
         res.shape = (res.shape[0], )
-        return np.dot(ss.C, y), res
+        return float(np.dot(ss.C, y) + ss.D*x), res
 
     return ode(x, f=lti_ode, init_y=init_y, init_x=init_x, clk_freq=clk_freq)
+
+
+@alternative(lti)
+@gear
+def lti_ctrl(x: Float, *, sys, init_x, init_y=None, clk_freq=None) -> Float:
+
+    return lti(x,
+               num=sys.num[0][0],
+               den=sys.den[0][0],
+               init_x=init_x,
+               init_y=init_y,
+               clk_freq=clk_freq)
