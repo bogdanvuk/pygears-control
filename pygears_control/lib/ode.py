@@ -1,11 +1,11 @@
-from pygears import GearDone, gear, module
+from pygears import GearDone, gear
 from scipy.integrate import solve_ivp
 from pygears.typing import Float
 from .continuous import continuous
 from collections import deque
 
 
-def cont_wrap(f, qin, qout, init, m):
+def cont_wrap(f, qin, qout, init):
     def wrap(t, y):
         x = wrap.x
 
@@ -58,7 +58,7 @@ def cont_wrap(f, qin, qout, init, m):
 def ode(x: Float, *, f, init_y, init_x, clk_freq=None) -> Float:
     def thread_function(qin, qout, clk_freq, init_x):
         try:
-            f_wrap = cont_wrap(f, qin, qout, init_x, module())
+            f_wrap = cont_wrap(f, qin, qout, init_x)
             solve_ivp(f_wrap, [0, float('inf')],
                       init_y,
                       max_step=1 / (2 * clk_freq),
