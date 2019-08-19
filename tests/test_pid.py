@@ -1,42 +1,193 @@
-from pygears_control.lib import pid_gen
-from control.matlab import *
+from pygears_control.lib import pidtf
+from control.matlab import feedback, tf
 
 from pygears.typing import Float
-from pygears.lib import drv
+from pygears.lib import drv, scoreboard
 from pygears_control.lib import lti, scope
 from pygears.sim import sim
+from pygears import Intf, config, gear, find
 
 # import matplotlib
 # matplotlib.use('GTK3Cairo', warn=False, force=True)
 
-def test_pid_controller(Kp, Ki, Kd):
-    pid = pid_gen(Kp, Ki, Kd)
 
+@gear
+def pid_lti_comb(set_point, *, Kp, Ki, Kd, plant):
+    pid = pidtf(Kp, Ki, Kd)
+    sys = plant * pid
+
+    plant_out = Intf(Float)
+
+    pid_in = set_point - plant_out
+
+    plant_out |= pid_in \
+        | lti(sys=sys, init_x=0) \
+
+    return plant_out
+
+
+@gear
+def pid_pg_comb(set_point, *, Kp, Ki, Kd, plant):
+    pid = pidtf(Kp, Ki, Kd)
+
+    plant_out = Intf(Float)
+
+    pid_in = set_point - plant_out
+
+    pid_out = pid_in \
+        | lti(name='pid', sys=pid, init_x=0)
+
+    plant_out |= pid_out \
+        | lti(name='plant', sys=plant, init_x=0)
+
+    return plant_out
+
+
+@gear
+def pid_lti_feedback(set_point, *, Kp, Ki, Kd, plant):
+    pid = pidtf(Kp, Ki, Kd)
     plant = tf([1], [1, 10, 20])
 
-    sys = feedback(plant * pid, 1)
+    sys = feedback(pid * plant)
 
-    clk_freq = 100
-    seq = [0.] * 2 + [1.] * 200
+    return set_point | lti(sys=sys, init_x=0)
 
-    den = sys.den[0][0].tolist()
-    num = sys.num[0][0].tolist()
+
+def sim_pid_pg_comb(Kp, Ki, Kd):
+    plant = tf([1], [1, 10, 20])
+
+    config['sim/clk_freq'] = 1000
+    seq = [0.] * 2 + [1.] * (config['sim/clk_freq'] // 20)
 
     set_point = drv(t=Float, seq=seq)
 
-    set_point | lti(num=num, den=den, init_x=0, clk_freq=clk_freq) | scope
+    plant_out = set_point \
+        | pid_pg_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    find('/pid_pg_comb/pid.x').producer | scope(title="PID Input")
+    find('/pid_pg_comb/pid.dout').consumer | scope(title="PID Output")
+    plant_out | scope(title="Plant Output")
 
     sim(timeout=len(seq))
 
 
-def test_p():
-    test_pid_controller(350, 0 ,0)
+def sim_pid_lti_comb(Kp, Ki, Kd):
+    plant = tf([1], [1, 10, 20])
 
-def test_pi():
-    test_pid_controller(350, 300, 0)
+    config['sim/clk_freq'] = 1000
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
 
-def test_pd():
-    test_pid_controller(350, 0, 50)
+    set_point = drv(t=Float, seq=seq)
 
-def test_pid():
-    test_pid_controller(350, 300, 50)
+    plant_out = set_point \
+        | pid_lti_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    find('/pid_lti_comb/lti.x').producer | scope(title="PID Input")
+    plant_out | scope(title="Plant Output")
+
+    sim(timeout=len(seq))
+
+
+def sim_pid_lti_feedback(Kp, Ki, Kd):
+    config['sim/clk_freq'] = 1000
+
+    plant = tf([1], [1, 10, 20])
+
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
+
+    drv(t=Float, seq=seq) \
+        | pid_lti_feedback(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant) \
+        | scope
+
+    sim(timeout=len(seq))
+
+
+def comp_pid_lti_comb_ref(Kp, Ki, Kd):
+    plant = tf([1], [1, 10, 20])
+
+    config['sim/clk_freq'] = 1000
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
+
+    set_point = drv(t=Float, seq=seq)
+
+    plant_out = set_point \
+        | pid_lti_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    plant_out | scope(title="Plant Output")
+
+    ref_out = set_point \
+        | pid_lti_feedback(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    ref_out | scope(title="Continuous Reference")
+
+    report = []
+    scoreboard(plant_out, ref_out, report=report, tolerance=2e-2)
+
+    sim(timeout=len(seq))
+
+
+def comp_pid_pg_comb_ref(Kp, Ki, Kd):
+    plant = tf([1], [1, 10, 20])
+
+    config['sim/clk_freq'] = 1000
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
+
+    set_point = drv(t=Float, seq=seq)
+
+    plant_out = set_point \
+        | pid_pg_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    find('/pid_pg_comb/pid.x').producer | scope(title="PID Input")
+    find('/pid_pg_comb/pid.dout').consumer | scope(title="PID Output")
+    plant_out | scope(title="Plant Output")
+
+    ref_out = set_point \
+        | pid_lti_feedback(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    ref_out | scope(title="Continuous Reference")
+
+    report = []
+    scoreboard(plant_out, ref_out, report=report, tolerance=5e-2)
+
+    sim(timeout=len(seq))
+
+
+def comp_pid_pg_comb_lti_comb(Kp, Ki, Kd):
+    plant = tf([1], [1, 10, 20])
+
+    config['sim/clk_freq'] = 1000
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
+
+    set_point = drv(t=Float, seq=seq)
+
+    plant_out = set_point \
+        | pid_pg_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    find('/pid_pg_comb/pid.x').producer | scope(title="PID Input")
+    find('/pid_pg_comb/pid.dout').consumer | scope(title="PID Output")
+    plant_out | scope(title="Plant Output")
+
+    ref_out = set_point \
+        | pid_lti_comb(Kp=Kp, Ki=Ki, Kd=Kd, plant=plant)
+
+    ref_out | scope(title="Continuous Reference")
+
+    report = []
+    scoreboard(plant_out, ref_out, report=report, tolerance=2e-2)
+
+    sim(timeout=len(seq))
+
+
+def test_pid_lti_comb_ref():
+    comp_pid_lti_comb_ref(350, 300, 50)
+
+
+def test_pid_pg_comb_ref():
+    comp_pid_pg_comb_ref(350, 300, 50)
+
+
+def test_pid_pg_comb_lti_comb():
+    comp_pid_pg_comb_lti_comb(350, 300, 50)
+
+
+test_pid_pg_comb_lti_comb()

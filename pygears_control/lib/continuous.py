@@ -1,6 +1,6 @@
 import threading
 import queue
-from pygears import GearDone, gear, module, registry, config
+from pygears import config, gear, module, registry
 from pygears.typing import Float
 from pygears.sim import clk, timestep
 
@@ -22,7 +22,6 @@ async def actuator(x: Float, *, qin, clk_freq, init):
 async def sensor(*, qout) -> Float:
     while (1):
         res = qout.get()
-        # sim_log().info(res)
         yield res
 
         await clk()

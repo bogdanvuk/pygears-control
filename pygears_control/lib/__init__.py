@@ -3,6 +3,6 @@ from .lti import lti
 from .ode import ode
 from .ngspice import ngspice
 from .scope import scope
-from .pid import pid_gen
+from .pid import pidtf
 
-__all__ = ['continuous', 'scope', 'lti', 'ode', 'ngspice', 'pid_gen']
+__all__ = ['continuous', 'scope', 'lti', 'ode', 'ngspice', 'pidtf']
