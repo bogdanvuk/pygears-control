@@ -10,7 +10,7 @@ def prop(Kp):
 
 
 def deriv(Kd):
-    return tf([Kd, 0], [0.01*Kd, 1])
+    return tf([Kd, 0], [0.001, 1])
 
 
 def pidtf(Kp, Ki=0, Kd=0):
