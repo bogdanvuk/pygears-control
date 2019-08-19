@@ -57,7 +57,7 @@ def sim_pid_pg_comb(Kp, Ki, Kd):
     plant = tf([1], [1, 10, 20])
 
     config['sim/clk_freq'] = 1000
-    seq = [0.] * 2 + [1.] * (config['sim/clk_freq'] // 20)
+    seq = [0.] * 2 + [1.] * config['sim/clk_freq']
 
     set_point = drv(t=Float, seq=seq)
 
