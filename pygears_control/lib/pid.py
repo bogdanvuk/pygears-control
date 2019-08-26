@@ -9,16 +9,19 @@ def prop(Kp):
     return tf([Kp], [1])
 
 
-def deriv(Kd):
-    return tf([Kd, 0], [0.01*Kd, 1])
+def deriv(Kd, N_filt=0):
+    return tf([Kd, 0], [1]) * lp_filt(N_filt)
 
 
-def pidtf(Kp, Ki=0, Kd=0):
+def lp_filt(N):
+    return tf([N], [1, N])
+
+
+def pidtf(Kp, Ki=0, Kd=0, N_filt=0):
     assert Kp != 0, "Proportional parameter must be greater than zero"
 
-    branches = []
-    for k, f in zip((Kp, Ki, Kd), (prop, integral, deriv)):
-        if k != 0:
-            branches.append(f(k))
+    p = prop(Kp)
+    i = integral(Ki)
+    d = deriv(Kd, N_filt)
 
-    return parallel(*branches)
+    return parallel(p, i, d)

@@ -61,7 +61,7 @@ def plot_process(qin, clk_freq, title=None):
                 break
 
     def run(yrng):
-        t = xdata[-1]
+        t = xdata[-1] if xdata else 0
         xmin, xmax = ax.get_xlim()
         ymin, ymax = ax.get_ylim()
 
@@ -106,8 +106,13 @@ async def scope(x: Float, *, clk_freq=None, title=None):
                                             args=(qin, clk_freq, title))
     _proc.start()
 
-    registry('sim/simulator').events['after_cleanup'].append(lambda sim: _proc.
-                                                             join())
+    def cleanup(sim):
+        if not registry('sim/exception'):
+            _proc.join()
+        else:
+            _proc.terminate()
+
+    registry('sim/simulator').events['after_cleanup'].append(cleanup)
 
     try:
         while True:
