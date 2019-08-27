@@ -28,11 +28,11 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     python_requires='>=3.6.0',
-    install_requires=['PySpice', 'scipy', 'matplotlib'],
-    setup_requires=['PySpice', 'scipy',  'matplotlib'],
+    install_requires=['PySpice', 'scipy', 'matplotlib', 'control'],
+    setup_requires=['PySpice', 'scipy', 'matplotlib', 'control'],
     package_data={'': ['*.j2', '*.sv']},
     include_package_data=True,
     keywords=
-    'PyGears functional hardware design Python simulator HDL ASIC FPGA',
-    packages=find_packages(exclude=['examples*', 'docs']),
+    'PyGears functional hardware design Python simulator HDL ASIC FPGA control systems',
+    packages=find_packages(exclude=['docs']),
 )
