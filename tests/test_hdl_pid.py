@@ -37,6 +37,7 @@ async def hls_i(din, *, Ki) -> b'din*bitw(Ki)*10':
             acc = acc + mult
             yield acc
 
+
 @gear(hdl={'compile': True, 'inline_conditions': True})
 async def hls_d(din, *, Kd) -> b'din*bitw(Kd)*10':
     dly = (din.dtype * type(Kd) * 10)(0)
@@ -44,9 +45,10 @@ async def hls_d(din, *, Kd) -> b'din*bitw(Kd)*10':
     while True:
         async with din as data:
             gain = data * Kd
-            sub_s = gain + (-dly)
+            sub_s = gain - dly
             dly = gain
             yield sub_s
+
 
 @gear
 def hdl_pid(din, *, Kp, Ki, Kd):
@@ -55,6 +57,7 @@ def hdl_pid(din, *, Kp, Ki, Kd):
     d = din | hls_d(Kd=Kd)
 
     return p + i + d
+
 
 @gear
 def hdl_pid_sys(set_point, *, Kp, Ki, Kd, plant):
@@ -91,7 +94,8 @@ def sim_hdl_pid(Kp, Ki, Kd):
 
     sim('/tools/home/tmp', timeout=len(seq))
 
+
 from pygears import config
 config['hdl/debug_intfs'] = ['*']
 
-sim_hdl_pid(Uint[10](373), Fixp[4, 16](807 / 1000), Fixp[20, 24](50*1000))
+sim_hdl_pid(Uint[10](373), Fixp[4, 16](807 / 1000), Fixp[20, 24](50 * 1000))
