@@ -3,6 +3,7 @@ from scipy.integrate import solve_ivp
 from pygears.typing import Float
 from .continuous import continuous
 from collections import deque
+import multiprocessing as mp
 
 
 def cont_wrap(f, qin, qout, init):
@@ -34,8 +35,10 @@ def cont_wrap(f, qin, qout, init):
         if wrap.done_out:
             raise GearDone
 
-        if qout.empty():
+        try:
             qout.put(outp)
+        except mp.queues.Full:
+            pass
 
         wrap.hist.append((wrap.x, wrap.t))
         wrap.x, wrap.t = qin.get()

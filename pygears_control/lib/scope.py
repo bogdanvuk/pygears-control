@@ -93,7 +93,6 @@ def plot_process(qin, clk_freq, title=None):
 
 @gear
 async def scope(x: Float, *, clk_freq=None, title=None):
-
     if clk_freq is None:
         clk_freq = config['sim/clk_freq']
 

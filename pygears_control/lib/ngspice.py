@@ -1,6 +1,7 @@
 from pygears import GearDone, gear
 from pygears.typing import Float
 from .continuous import continuous
+import multiprocessing as mp
 
 from PySpice.Spice.Netlist import Circuit
 from PySpice.Spice.NgSpice.Shared import NgSpiceShared
@@ -35,13 +36,17 @@ class PgNgSpice(NgSpiceShared):
 
     def send_data(self, actual_vector_values, number_of_vectors, ngspice_id):
         self._initial = False
-        if self._qout.empty():
-            if self._outs[0][1] == 0:
-                neg = 0
-            else:
-                neg = actual_vector_values[self._outs[0][1]].real
 
-            self._qout.put(actual_vector_values[self._outs[0][0]].real - neg)
+        if self._outs[0][1] == 0:
+            neg = 0
+        else:
+            neg = actual_vector_values[self._outs[0][1]].real
+
+        try:
+            self._qout.put_nowait(actual_vector_values[self._outs[0][0]].real -
+                                  neg)
+        except mp.queues.Full:
+            pass
 
         return 0
 
@@ -50,7 +55,6 @@ class PgNgSpice(NgSpiceShared):
         if self._t is None:
             return 0
 
-        # print(f'Request v for {node}@{time} for {ngspice_id}')
         if (time < self._t) or (self._initial):
             voltage[0] = self._x
             return 0
