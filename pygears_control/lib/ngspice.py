@@ -2,6 +2,8 @@ from pygears import GearDone, gear
 from pygears.typing import Float
 from .continuous import continuous
 import multiprocessing as mp
+from collections import deque
+from pygears.sim import timestep
 
 from PySpice.Spice.Netlist import Circuit
 from PySpice.Spice.NgSpice.Shared import NgSpiceShared
@@ -15,10 +17,11 @@ class PgNgSpice(NgSpiceShared):
         self._qin = qin
         self._qout = qout
         self._x = x
-        self._next_x = x
+        self._init = x
         self._t = 0
         self._initial = True
         self._outs = outs
+        self._hist = deque([], 10)
 
     # @staticmethod
     # def _send_data(data, number_of_vectors, ngspice_id, user_data):
@@ -50,19 +53,31 @@ class PgNgSpice(NgSpiceShared):
 
         return 0
 
-    def get_vsrc_data(self, voltage, time, node, ngspice_id):
+    def get_vsrc_data(self, voltage, t, node, ngspice_id):
+        x = self._x
+
+        # Sometimes ODE solver might go into the past trying to improve the
+        # accuracy. In that case we need to dig the appropriate set of inputs
+        # for that moment in time
+        if self._hist and t < self._hist[-1][1]:
+            for i in range(-2, -len(self._hist), -1):
+                if t >= self._hist[i][1]:
+                    x = self._hist[i + 1][0]
+                    break
+            else:
+                x = self._init
+
+        voltage[0] = x
 
         if self._t is None:
             return 0
 
-        if (time < self._t) or (self._initial):
-            voltage[0] = self._x
+        if (t < self._t) or (self._initial):
             return 0
 
-        self._x = self._next_x
-        self._next_x, self._t = self._qin.get()
+        self._hist.append((self._x, self._t))
+        self._x, self._t = self._qin.get()
 
-        voltage[0] = self._x
         return 0
 
 
